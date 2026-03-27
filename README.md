@@ -10,6 +10,7 @@ A deep dive into Lido protocol architecture, including:
 
 This repository explains Lido from an architectural perspective, not just code.
 
+<br>
 
 ## Overview
 
@@ -20,11 +21,13 @@ Lido is an asynchronous, oracle-driven staking system where:
 - Oracle synchronizes state periodically
 - Withdrawals are processed via a queue
 
+<br>
 
 ## Architecture Diagram
 
 ![Lido Architecture](./diagrams/lido_architecture.png)
 
+<br>
 
 ## Contents
 
@@ -37,6 +40,7 @@ Lido is an asynchronous, oracle-driven staking system where:
 - [06 - Fee Model](./docs/06_fee_model.md)
 - [07 - ExitBusOracle](./docs/07_exit_bus_oracle.md)
 
+<br>
 
 ## 💡 Key Insights
 
@@ -45,16 +49,13 @@ Lido is an asynchronous, oracle-driven staking system where:
 - Withdrawal does NOT trigger validator exit
 - The system is asynchronous, not user-triggered
 
-
-## Author
-
-David Zhang  
-Smart contract developer
-
-- Email: haodongzhang125@gmail.com
-
+<br>
 
 ## License
 
-This work is open for learning and sharing.  
-Please credit the original author when referencing.
+This work is open for learning and sharing.
+
+David Zhang
+Smart contract developer
+
+- Email: haodongzhang125@gmail.com

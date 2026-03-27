@@ -1,56 +1,59 @@
-
-
 ## 概述
 
 Lido 协议 oracle 是一个复杂的状态机，主要由三个核心模块组成：`HashConsensus`、`BaseOracle`、`AccountingOracle` 组成。oracle committee 成员将报告上传到 `HashConsensus`，对达成共识，且在规定时间范围内提交报告，`BaseOracle` 负责记录和管理当前已达成共识的报告， `AccountingOracle`负责处理报告，为 Lido 合约提供状态更新的数据参数。
 
+<br>
 
-*==HashConsensus：管理 frame 和 hash 共识==*
+*HashConsensus：管理 frame 和 hash 共识*
+---
 
->  oracle committee member 成员
->  quorum（最少多少成员支持同一个 hash 才算达成共识）
->  frame 的时间切分
->  每个 frame 对应的 `refSlot` 和 `deadline`
->  成员在某个 frame 上提交的 report hash
+>  oracle committee member 成员<br>
+>  quorum（最少多少成员支持同一个 hash 才算达成共识）<br>
+>  frame 的时间切分<br>
+>  每个 frame 对应的 `refSlot` 和 `deadline`<br>
+>  成员在某个 frame 上提交的 report hash<br>
 
 所以 `HashConsensus` 合约不处理业务数据本身，也不做 rebase。它只做一件事：为每个 frame 选出一份达成共识的 report hash。
 
+<br>
 
-*==BaseOracle：接收 consensus report，并管理 processing 状态==*
+*BaseOracle：接收 consensus report，并管理 processing 状态*
+---
 
 `BaseOracle` 合约是一个“异步处理基类“。它负责：
 
->  接收 HashConsensus 推送过来的 `(hash, refSlot, deadline)`
->  记录当前已共识但尚未处理的 report
->  在真正开始处理前，允许共识被替换或丢失
->  在开始处理后，锁定当前 `refSlot`
+>  接收 HashConsensus 推送过来的 `(hash, refSlot, deadline)`<br>
+>  记录当前已共识但尚未处理的 report<br>
+>  在真正开始处理前，允许共识被替换或丢失<br>
+>  在开始处理后，锁定当前 `refSlot`<br>
 
 所以它是共识结果的缓冲层和 processing 状态机。它本身不需要理解 `report data` 的业务含义。
 
+<br>
 
-*==AccountingOracle：提交完整数据并执行业务==*
-
+*AccountingOracle：提交完整数据并执行业务*
+---
 `AccountingOracle` 在 `BaseOracle` 之上增加了真正的业务语义。它负责：
 
->  接收完整 `ReportData`
->  计算 `keccak256(abi.encode(data))`
->  校验它是否与当前共识 hash 一致
->  调用 `Lido.handleOracleReport()`
->  同步 legacy oracle / staking router / withdrawal queue
->  初始化 extraData 状态
->  分批处理 extraData item
+>  接收完整 `ReportData`<br>
+>  计算 `keccak256(abi.encode(data))`<br>
+>  校验它是否与当前共识 hash 一致<br>
+>  调用 `Lido.handleOracleReport()`<br>
+>  同步 legacy oracle / staking router / withdrawal queue<br>
+>  初始化 extraData 状态<br>
+>  分批处理 extraData item<br>
 
 所以 `HashConsensus` 解决哪份 hash 被认可，`BaseOracle` 解决什么时候开始处理，`AccountingOracle` 解决“怎么处理完整业务数据”。
 
-```Plain text
+<br>
+
+```text
 HashConsensus
 	-> 管理委员会 member、frame、quorum、report hash 共识
-
 
 BaseOracle
 	-> 接收共识后的 hash，记录当前 frame 可处理的 consensus report
 	-> 负责 processing 状态机（什么时候开始处理、是否已开始）
-
 
 AccountingOracle
 	-> 提交完整 ReportData
@@ -59,8 +62,7 @@ AccountingOracle
 	-> 初始化并分批处理 extraData
 ```
 
-整条链路是先对 `hash` 达成共识，再提交完整 `ReportData`，再开始 `processing`，最后再处理 `extraData`。这样的好处是，完整报告很大，先共识 `hash` 更便宜，只有与共识 `hash` 匹配的完整报告才能被处理，`extraData` 可以拆成多批提交，降低 gas 压力。
-
+整条链路是先对 `hash` 达成共识，再提交完整 `ReportData`，再开始 `processing`，最后再处理 `extraData`。这样的好处是，完整报告很大，先共识 `hash` 更便宜，只有与共识 `hash` 匹配的完整报告才能被处理，`extraData` 可以拆成多批提交，降低 gas 压力。<br><br>
 
 ## 1. 时间模型：report 提交如何划分时间周期
 
@@ -68,21 +70,22 @@ AccountingOracle
 
 Oracle 的时间模型建立在 Beacon Chain 的 slot / epoch 基础上，其中包括：
 
-### **1.1 `slot`**
+### 1.1 `slot`
 
 slot 是最小时间单位
 
 `timestamp = genesisTime + slot * secondsPerSlot`
 
+<br>
 
-### **1.2 `epoch`**
+### 1.2 `epoch`
 
 一个 epoch 由固定数量的 slot 组成
 
 `epoch = slot / slotsPerEpoch`
 
 例如：
-```Plain
+```text
 slotsPerEpoch = 32
 
 slot 0   ~ 31   -> epoch 0
@@ -90,24 +93,26 @@ slot 32  ~ 63   -> epoch 1
 slot 64  ~ 95   -> epoch 2
 ```
 
+<br>
 
-### **1.3 `frame`**
+### 1.3 `frame`
 
 `frame` 是 `HashConsensus` 合约用来组织 oracle 报告的时间窗口，一个 `frame` 包含固定数量的 epoch。
 
 例如：
-```Plain
+```text
 epochsPerFrame = 225
 ```
 
 那么每个 frame 就是 225 个 epoch。如果每个 `epoch` 都有 32 个 slot，那么每个 `frame` 有 225 * 32 = 7200 个 `slot`。
 
+<br>
 
-### **1.4 `reference slot 简称：refSlot`**
+### 1.4 `reference slot 简称：refSlot`
 
 一个 `frame` 并不是对 `frame` 内每个 `slot` 都分别出报告，而是只围绕一个固定的 `refSlot` 出一份报告。
 
-- `refSlot` 是上一个 `frame` 的最后一个 `slot`，作为当前 `frame` 的观察基准 
+- `refSlot` 是上一个 `frame` 的最后一个 `slot`，作为当前 `frame` 的观察基准
 - `processing deadline` 是该 `frame` 的结束时间（按时间计算，而非具体 slot）
 -  member 可以在当前 `frame` 的 reporting 窗口内提交 hash（fast lane + slow lane）
 
@@ -115,19 +120,20 @@ epochsPerFrame = 225
 prev frame        current frame
 |..............|.................................|
                refSlot                       deadline
-               
+
 // refSlot = last slot of prev frame
 // deadline = end timestamp of current frame
 ```
 
 这样设计的意义在于：
 
-- 当前 `frame` 的 report 基于 `refSlot` 对应的 Beacon Chain 状态快照，保证与共识层一致   
-- 当前 `frame` 的处理结果，会在下一个 `frame` 的 `refSlot` 被观测到，形成闭环  
+- 当前 `frame` 的 report 基于 `refSlot` 对应的 Beacon Chain 状态快照，保证与共识层一致
+- 当前 `frame` 的处理结果，会在下一个 `frame` 的 `refSlot` 被观测到，形成闭环
 - 不同 `frame` 之间通过 `refSlot` 隔离，避免状态观测与处理相互干扰
 
+<br>
+<br>
 
----
 ## 2. Hash 机制：report hash 如何产生、上报、达成共识
 
 `HashConsensus` 合约并不知道完整报告长什么样，它只处理 `bytes32 reportHash` 。对于 `AccountingOracle` 合约来说，这个 `hash` 来自 `keccak256(abi.encode(ReportData))`。也就是说，report member 在链下都应该基于同一份完整 `ReportData` 计算出同一个 hash。
@@ -152,8 +158,9 @@ prev frame        current frame
 
 所以 `HashConsensus` 的共识本质是，member 对一整份 `ReportData` 的 ABI 编码 hash 达成一致，因为其中的参数将在 Lido 合约中作为入参修改账本状态。
 
+<br>
 
-### **2.1 member 如何上传 hash**
+### 2.1 member 如何上传 hash
 
 成员会在当前 frame 内，对同一个 `refSlot` 调用：`HashConsensus.submitReport(refSlot, reportHash, consensusVersion)`。
 
@@ -166,23 +173,24 @@ prev frame        current frame
 
 如果通过，就把该成员对该 frame 的投票记下来。
 
+<br>
 
-### **2.2  `quorum` 共识阈值**
+### 2.2  `quorum` 共识阈值
 
 `quorum` 是对某个 hash 投票统计的阈值，某个 hash 投票数大于该值则表示对此 hash 达成共识，其规则如下：
 
-- `quorum` 必须严格大于成员数量的一半（大于 `totalMembers` / 2）  
+- `quorum` 必须严格大于成员数量的一半（大于 `totalMembers` / 2）
 - 最小 `quorum = floor(totalMembers / 2) + 1  `
 
 比如：
-```Plain
+```text
 committee = 5 人
 quorum = 3
 ```
 
 那如果 3 个成员都提交了相同的 `reportHash = H1`，就说明 H1 达成共识。
 
-```Plain
+```text
 member1 -> H1
 member2 -> H1
 member3 -> H1
@@ -192,26 +200,28 @@ member5 -> 未提交
 
 此时：H1 票数为 3票，且大于或等于 `quorum(3)`，H1 成为当前 `frame` 的 consensus report。
 
+<br>
 
-### **2.3 提交共识报告**
+### 2.3 提交共识报告
 
 一旦某个 hash 达到 quorum，`HashConsensus` 会调用 `report processor` 合约中的
 `submitConsensusReport(reportHash, refSlot, deadline)`。这个动作不是立刻开始处理业务，而是把已达成共识的 `(hash, refSlot, deadline)` 提交到 `BaseOracle` 合约，记录为当前 `frame` 的待处理共识结果。开篇提到过 `BaseOracle` 合约只负责接收 consensus report 和管理 processing 状态，它不负责处理报告中的数据。
 
+<br>
 
-### **2.4 共识作废和恢复**
+### 2.4 共识作废和恢复
 
 `quorum` 作为是否达成共识的阈值，而这个值管理员可以实时修改，那么每次修改都可能对已提交到 `BaseOracle` 合约中的共识报到存在影响（作废/恢复），举个例子：
 
 当前
 
-```Plain
+```text
 quorum = 3
 ```
 
 成员支持情况：
 
-```Plain
+```text
 H1 = 3 票
 ```
 
@@ -219,13 +229,13 @@ H1 = 3 票
 
 如果管理员把 quorum 提高到：
 
-```Plain
+```text
 quorum = 4
 ```
 
 那原来那 3 票就不够了，于是：
 
-```Plain
+```text
 H1 不再是共识报告
 ```
 
@@ -246,15 +256,16 @@ submitConsensusReport(reportHash, refSlot, deadline)
 也就是说，在开始 processing 之前，共识是可变的。同一个 `frame` 里，当前共识 hash 可以被替换、丢失、再恢复。一旦某个 `refSlot` 进入 `processing`，即：共识阶段结束，进入执行阶段。当前 `frame` 的共识 hash 被锁定：
 
 > 1. 当前 `frame` 的共识 hash 被锁定
-> 2. `HashConsensus` 不再接受该 `refSlot` 的任何新投票  
+> 2. `HashConsensus` 不再接受该 `refSlot` 的任何新投票
 > 3. 无法再触发 `discardConsensusReport`  作废已提供的共识报告
-> 4. 无法再替换为新的共识 hash  
+> 4. 无法再替换为新的共识 hash
 > 5. `submitReportData` 只能执行一次
 
 接下来，我们来看一下共识报告如何进入 `processing` 阶段。
 
+<br>
+<br>
 
----
 ## 3. Report hash 处理：主报告如何开始 `processing`
 
 在主报告开始 `processing` 之前，在 `HashConsensus` 合约向 `BaseOracle` 合约上传完达成共识的报告之后，其实还有一个步骤。即：`submitReportData` ，它是在 `BaseOracle` 合约中触发的，整个顺序如下：
@@ -280,7 +291,7 @@ submitConsensusReport(reportHash, refSlot, deadline)
 
 一旦通过共识校验，主报告就会进入 `processing` 阶段：
 
-```Plain
+```text
 _startProcessing()
     -> 标记当前 refSlot 开始 processing
     -> 更新 lastProcessingRefSlot
@@ -291,24 +302,24 @@ _startProcessing()
 
 从而实现：
 
-```Plain
+```text
 1 frame -> 1 refSlot -> 1 main report processing
 ```
 
+<br>
+<br>
 
----
 ## 4. `ReportData` 数据处理
 
 前面我们讲到了 `submitReportData` 函数中调用 `_startProcessing()` 接口，主报告进入 `processing` 阶段。接下来，我们要继续讲 `submitReportData` 函数中 `_handleConsensusReportData` 函数是如何处理主报告中的数据，这也是整个 Oracle 机制改写不同合约账本的触发点。
 
 因为涉及到的链路比较长，我们将其拆成 6 步进行介绍：
 
-
-### **4.1 检查 `extraData` 头部是否合法** 
+### 4.1 检查 `extraData` 头部是否合法
 
 如果：
 
-```Plain
+```text
 extraDataFormat = EMPTY
 ```
 
@@ -321,7 +332,7 @@ extraDataFormat = EMPTY
 
 如果：
 
-```Plain
+```text
 extraDataFormat = LIST
 ```
 
@@ -332,8 +343,9 @@ extraDataFormat = LIST
 
 表示有 `extraData` 需要在后续被处理，及更新 `module` 下 `node operator` 中的相关数据。
 
+<br>
 
-### **4.2 同步 CL 汇总数据到 legacy oracle**
+### 4.2 同步 CL 汇总数据到 legacy oracle
 
 `AccountingOracle` 合约会调用 legacy oracle 合约的兼容接口，把：
 
@@ -343,8 +355,9 @@ extraDataFormat = LIST
 
 同步过去，这一步主要是迁移兼容层逻辑。
 
+<br>
 
-### **4.3 更新 module 级 exited validators**
+### 4.3 更新 module 级 exited validators
 
 主报告里有两组汇总级字段：
 
@@ -353,12 +366,13 @@ extraDataFormat = LIST
 
 `AccountingOracle` 合约会把它们同步到 `StakingRouter` 合约中，这里是 `module` 级别的汇总，不是 `node operator` 级明细。
 
+<br>
 
-### **4.4 通知 WithdrawalQueue 新的 report 到了**
+### 4.4 通知 WithdrawalQueue 新的 report 到了
 
 调用：
 
-```Plain
+```text
 withdrawalQueue.onOracleReport(
     isBunkerMode,
     prevReportTimestamp,
@@ -368,8 +382,9 @@ withdrawalQueue.onOracleReport(
 
 作用是更新 report 时间边界，同步 bunker mode 状态。
 
+<br>
 
-### **4.5 调 `Lido` 合约中 `handleOracleReport()`接口
+### 4.5 调 `Lido` 合约中 `handleOracleReport()`接口
 
 这是主报告最核心的业务动作。
 
@@ -392,8 +407,9 @@ withdrawalQueue.onOracleReport(
 - vault 余额归集
 - burn 处理
 
+<br>
 
-### **4.6 初始化 extraData processing state**
+### 4.6 初始化 extraData processing state
 
 主报告最后不会直接处理 extraData，而是把：
 
@@ -428,13 +444,13 @@ withdrawalQueue.onOracleReport(
 
 也就是把：
 
-```Plain
+```text
 module A total exited = 50
 ```
 
 进一步拆成：
 
-```Plain
+```text
 module A:
   operator id 10 -> exited validator num 25
   operator id 11 -> exited validator num 20
@@ -443,7 +459,7 @@ module A:
 
 所以顺序一定是：
 
-```Plain
+```text
 先 submitReportData
     -> 先 rebase / 先处理主报告
 
@@ -457,18 +473,19 @@ module A:
 
 从而最终将其分离设计为：
 
-```Plain
+```text
 主报告：汇总 + extraData 的 hash / count / format
 extraData：后续分批异步处理
 ```
 
 直到这里，我们介绍完了主报告 `ReportData` 的处理流程，接下来我们将详细介绍 `extraData` 如何分批异步处理的，以及通过何种形式做到了高效的 gas saving。
 
+<br>
+<br>
 
----
 ## 5. `extraData` 数据处理
 
-### **5.1 `extraData` 数据分类**
+### 5.1 `extraData` 数据分类
 
 `extraData` 是更新 `node operator` 明细级的数据，主要是特定 `module` 下 `node operator` 的 `exit validator` 数量。`extraData` 的数据有两种模式：`EMPTY` 和 `LIST`。
 
@@ -481,7 +498,7 @@ extraData：后续分批异步处理
 
 后续不走 batch 处理，而是直接走：
 
-```Plain
+```text
 _submitReportExtraDataEmpty()
 ```
 
@@ -493,7 +510,7 @@ _submitReportExtraDataEmpty()
 
 也就是说：即使没有 extraData，也要显式把状态机走完。
 
----
+ 
 
 `LIST` 表示：这轮 report 有 extraData 明细，后续要分批提交。
 
@@ -504,14 +521,15 @@ _submitReportExtraDataEmpty()
 
 后续通过：
 
-```Plain
+```text
 submitReportExtraDataList(bytes data)
 ```
 
 来一批一批处理。
 
+<br>
 
-### **5.2 `extraData` 数据分批**
+### 5.2 `extraData` 数据分批
 
 在处理 `extraData` 时，将其分为了 `batch` 和 `item`。其实看到这两个词，大家第一感觉是分批次处理每组数据。
 
@@ -519,7 +537,7 @@ submitReportExtraDataList(bytes data)
 
 `submitReportExtraDataList(bytes data)` 里的 `data` 不是一个 item，而是一整个 batch：
 
-```Plain
+```text
 | nextHash (32 bytes) | item0 | item1 | item2 | ... |
 ```
 
@@ -528,19 +546,19 @@ submitReportExtraDataList(bytes data)
 - 前 32 字节 `nextHash` 是下一批的 hash
 - 后面跟着多个 item
 
----
+ 
 
 `item` 表示：一个业务单元
 
 每个 `item` 的头部格式是：
 
-```Plain
+```text
 | 3 bytes itemIndex | 2 bytes itemType | itemPayload |
 ```
 
 当前版本只支持：
 
-```Plain
+```text
 itemType = EXITED_VALIDATORS
 ```
 
@@ -548,7 +566,7 @@ itemType = EXITED_VALIDATORS
 
 其中`extraData`数据中需要处理的值，存储在 ==`itemPayload`== 中。payload 格式是：
 
-```Plain
+```text
 | 3 bytes  | 8 bytes | nodeOpsCount * 8 bytes | nodeOpsCount * 16 bytes |
 | moduleId | count   | nodeOperatorIds        | validatorsCounts        |
 ```
@@ -559,7 +577,7 @@ itemType = EXITED_VALIDATORS
 
 例如：
 
-```Plain
+```text
 moduleId = 2
 nodeOpsCount = 3
 nodeOperatorIds = [10, 15, 20]
@@ -568,15 +586,16 @@ validatorsCounts = [5, 8, 12]
 
 表示：
 
-```Plain
+```text
 module 2:
   operator id 10 -> exited = 5
   operator id 15 -> exited = 8
   operator id 20 -> exited = 12
 ```
 
+<br>
 
-### **5.3 `extraData` 数据处理**
+### 5.3 `extraData` 数据处理
 
 `extraData` 的处理可以理解为，它是一个“按批次提交 + 每批包含多个 item + hash 链保证顺序”的处理流程。
 
@@ -584,13 +603,13 @@ module 2:
 
 假设当前 report 中：
 
-```Plain text
+```text
 extraDataItemsCount = 5
 ```
 
 表示总共有 5 个 item：
 
-```Plain text
+```text
 item0, item1, item2, item3, item4
 ```
 
@@ -627,7 +646,7 @@ batch1 → H2 → batch2 → 0
 
 整体流程如下：
 
-```Plain text
+```text
 submitReportData
     ↓
 procState.dataHash = H1
@@ -647,8 +666,7 @@ nextHash = 0 → 结束
 
 首先我们来看下 `batch` 是如何被处理的，然后我们再看 `batch` 下的 `item` 是如何被处理的。
 
-
----
+ 
 **`batch` 的处理逻辑**
 
 `_submitReportExtraDataList()`这个函数是 `extraData` 分批处理的总调度器，它会先拿 `ExtraDataProcessingState`，知道当前：
@@ -668,14 +686,14 @@ keccak256(data) == procState.dataHash
 
 需要注意的是这里的 `procState.dataHash` 不是之前我们讨论的主报告 `reportData` 达成共识的 hash 值。它是主报告中的 `dataHash`，或后续链式 hash。
 
-> 1. HashConsensus 共识的是主报告整体 hash  
-> 	↓  
-> 2. 主报告里包含 extraDataHash  
-> 	↓  
-> 3. submitReportData 成功后  
-> 	↓  
-> 4. extraDataHash 被写入 procState.dataHash  
-> 	↓  
+> 1. HashConsensus 共识的是主报告整体 hash
+> 	↓
+> 2. 主报告里包含 extraDataHash
+> 	↓
+> 3. submitReportData 成功后
+> 	↓
+> 4. extraDataHash 被写入 procState.dataHash
+> 	↓
 > 5. submitReportExtraDataList 用 keccak256(data) 去匹配它
 
 接着，读取  `batch` 开头的 `nextHash`（`data` 的前 32 字节就是：`nextHash`）
@@ -690,14 +708,13 @@ assembly {
 
 判断，如果：
 
-```Plain
+```text
 nextHash == 0
 ```
 
 说明这是最后一批，否则说明后面还有下一批。
 
-
----
+ 
 **`item` 的处理逻辑**
 
 从 `offset=32` 开始解析 `item`（因为前 32 字节是 nextHash）。然后调用 `_processExtraDataItems(data, iter)` 逐个处理 item：`item0 → item1 → item2 → ...`。
@@ -713,13 +730,13 @@ stakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator()
 处理完本批后：
 
 - 如果 `nextHash == 0`：最后一批
-    
+
     - 要求 `itemsProcessed == itemsCount`
     - 标记 `submitted = true`
     - 调 `stakingRouter.onValidatorsCountsByNodeOperatorReportingFinished()`
-    
+
 - 如果 `nextHash != 0`：还有下一批
-    
+
     - 要求 `itemsProcessed < itemsCount`
     - 把 `procState.dataHash = nextHash`
     - 等下一批提交
@@ -730,38 +747,39 @@ stakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator()
 
 具体流程如下：
 
-> ==*第一步：先解析 payload，从当前 `dataOffset` 读取*==
-> 
+> *第一步：先解析 payload，从当前 `dataOffset` 读取*
+>
 > - `moduleId`
 > - `nodeOpsCount`
 > - `nodeOpIds` 字节切片
 > - `valuesCounts` 字节切片
-> 
+>
 > 然后根据 `nodeOpsCount` 算出这个 item 的总长度，更新 `dataOffset` 到下一个 item 开始处。
-> 
-> 
-> ==*第二步：排序检查*==
-> 
+>
+>
+> *第二步：排序检查*
+>
 > 系统要求全局顺序是按下面这个 key 严格递增：
-> 
+>
 > `(itemType, moduleId, nodeOperatorId)`
-> 
+>
 > 所以会做两层检查：
-> 
+>
 > 	1. 当前 `item` 的第一个 `(type, moduleId, nodeOpId)` 必须大于上一个 `item` 的最后一个 key
 > 	2. 当前 `item` 内部的 `nodeOperatorIds` 也必须严格递增
-> 
+>
 > 这样可以保证不重复、不乱序、不跳跃。
-> 
-> 
-> ==*第三步：调用 StakingRouter 落地业务*==
-> 
+>
+>
+> *第三步：调用 StakingRouter 落地业务*
+>
 > 解析和校验都通过后，会调用：
-> 
+>
 > `reportStakingModuleExitedValidatorsCountByNodeOperator(moduleId, nodeOpIds, valuesCounts)`
-> 
+>
 > 这一步才是真正把 `node operator` 级 `exited validators` 明细同步到 `StakingRouter`。
 
+<br>
 
 ### 5.4 `extraData` packed 高效 gas 机制
 
@@ -773,14 +791,14 @@ stakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator()
 1. calldata 压缩
     uint64 不再按 32 bytes 编码
     uint128 也不再按 32 bytes 编码
-    
+
 2. 多 item 合并成一个 batch
     一个 batch 可以处理多个 module / 多个 item
-      
+
 3. 多批次链式续传
     一批处理不完，可以继续下一批
     通过 nextHash 串起来
-    
+
 4. 全局顺序与完整性
     不能乱序
     不能替换中间某一批
@@ -790,14 +808,14 @@ stakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator()
 所以 packed `batch/item` 解决的是“大规模、可校验、可续传的输入协议。
 
 > 我们回到前面 5.3 开头讲的例子，来展示整个 `extraData` 被处理的过程
-> 
+>
 > 假如这轮 report 有  5 个 `item`：
-> 
+>
 > `item0, item1, item2, item3, item4`
-> 
+>
 > 这时发现太大了，拆成两批（`batch 或者叫 chunk`)
 
-==第二批 batch2==
+第二批 batch2
 
 ```solidity
 batch2 = | 0x00..00 | item3 | item4 |
@@ -806,7 +824,7 @@ hash2 = keccak256(batch2)
 
 因为这是最后一批，所以 `nextHash = 0`。
 
-==第一批 batch1==
+第一批 batch1
 
 ```solidity
 batch1 = | hash2 | item0 | item1 | item2 |
@@ -849,14 +867,14 @@ submitReportExtraDataList(batch2)
   -> submitted = true
   -> stakingRouter.onValidatorsCountsByNodeOperatorReportingFinished()
 ```
-
-
----
+<br>
+<br>
+ 
 ## 6. 状态机对外暴露
 
 `AccountingOracle`合约对外提供了 `getProcessingState()` 的查询接口，用来回答：
 
-```Plain
+```text
 当前 frame：
 	1. 有没有 consensus hash？
     2. 主报告是否已提交？
@@ -870,11 +888,12 @@ submitReportExtraDataList(batch2)
 - `BaseOracle`：当前 refSlot 是否已经开始 processing
 - `AccountingOracle`：extraData 处理进度
 
+ <br>
+ <br>
 
----
 ## Summary
 
-```Plain text
+```text
 1. 时间切分
    slot -> epoch -> frame
    每个 frame 只有一个 refSlot 和一个 processing deadline
@@ -915,6 +934,4 @@ submitReportExtraDataList(batch2)
    moduleId + nodeOperatorIds + validatorsCounts
    最终调用 StakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator(...)
 ```
-
-
 

@@ -1,14 +1,18 @@
-
-
 ## 概述
 
 `AccountingOracle` 系列合约的机制主要是负责同步 `Module` 和 `node operator` 级退出的 `validator`数据。而 `ValidatorsExitBusOracle` 系列合约则是真正触发 CL 层“哪些 validator 现在应该退出”。所以 `AccountingOracle` 主要负责状态同步，它是一个状态机。`ValidatorsExitBusOracle` 则是真正去 CL 层控制和执行 `validator` 退出的触发器，前者是果，后者是因。
 
+<br>
+
 或许大家会存在疑惑，为什么需要 `ValidatorsExitBusOracle` 系列合约，它到底和 `WithdrawalQueue` 系列合约存在什么联系？其实用户通过 `WithdrawalQueue` 合约 `withdrawal request` 不会直接触发 CL 层的 validator exit，它只是记录提取的需求。为了让 CL 层 validator 真正退出，需要单独的退出指令系统，这就是 `ValidatorsExitBusOracle` 的作用。
+
+<br>
 
 `ValidatorsExitBusOracle` 和 `AccountingOracle` 不同的还有两点。第一，它不是只有 `HashConsensus -> BaseOracle -> submitReportData` 路径；除此之外，`ValidatorsExitBus` 还提供了 `submitExitRequestsHash -> submitExitRequestsData` 的辅助两阶段路径。第二，它不是将 `ReportData` 主报告和 `extrData` 数据分开处理。实际上，`ValidatorsExitBusOracle` 有两条提交路径：
 
-*==Oracle 共识路径（主路径）==*
+<br>
+
+*Oracle 共识路径（主路径）*
 
 `HashConsensus -> BaseOracle -> submitReportData`
 
@@ -16,8 +20,9 @@
 - 校验 `report hash`
 - 属于标准 Oracle 流程
 
+<br>
 
-*==Bus 两阶段路径（辅助路径）==*
+*Bus 两阶段路径（辅助路径）*
 
 `submitExitRequestsHash(hash) -> submitExitRequestsData(data)`
 
@@ -27,8 +32,9 @@
 
 此外，`ValidatorsExitBusOracle` 处理 `ReportData` 主报告和 `ExitRequestsData` 数据是在一个函数调用内处理，进行 `emit event`。
 
+<br>
+<br>    
 
----
 ## 1. Oracle 共识路径
 
 `ValidatorsExitBusOracle` 同样支持标准的 Oracle 共识流程，其整体结构与 `AccountingOracle` 一致，依然基于：
@@ -39,6 +45,7 @@ HashConsensus -> BaseOracle -> ValidatorsExitBusOracle
 
 但它的 `report` 数据更简单，不包含 `rebase / vault / withdrawal` 等逻辑，只包含 exit requests
 
+<br>
 
 ### 1.1 Report hash 产生与提交
 
@@ -71,6 +78,7 @@ keccak256(abi.encode(reportData))
 HashConsensus.submitReport(refSlot, reportHash, consensusVersion)
 ```
 
+<br>
 
 ### 1.2 `quorum` 共识机制
 
@@ -94,6 +102,7 @@ member4 -> H2
 H1 成为 consensus report
 ```
 
+<br>
 
 ### 1.3 提交共识报告到 BaseOracle
 
@@ -115,6 +124,7 @@ _storageConsensusReport = {
 
 此时只是“有了一份可以处理的 exit request hash”，还没有执行 exit。
 
+<br>
 
 ### 1.4 提交完整 exit request 数据
 
@@ -146,20 +156,22 @@ _startProcessing()
 该 refSlot 只能处理一次
 ```
 
+<br>
 
 ### 1.5 处理 exit requests
 
 通过调用 `_handleConsensusReportData(data)` 内部函数，其核心逻辑：
 
-```Plain text
-1. 校验 dataFormat（必须为 LIST） 
+```text
+1. 校验 dataFormat（必须为 LIST）
 2. 校验 data length
 3. sanity checker 检查 requestsCount
 4. 调用 _processExitRequestsList(data)
-5. 更新 processing state 
+5. 更新 processing state
 6. 更新 TOTAL_REQUESTS_PROCESSED
 ```
 
+<br>
 
 ### 1.6 解析并 emit exit request
 
@@ -190,6 +202,7 @@ while(offset < end):
 
 到目前这里只是 emit event，不会立即触发 exit 动作。
 
+<br>
 
 ### 1.7 真正执行 exit
 
@@ -213,22 +226,23 @@ triggerExits(exitsData, exitDataIndexes, refundRecipient)
 
 Oracle 路径总结
 
-```Plain text
-member 提交 hash 
-	↓ 
-HashConsensus 达成 quorum 
-	↓ 
-BaseOracle 记录 consensus report 
-	↓ 
-submitReportData 提交完整数据 
-	↓ 
-_processExitRequestsList emit exit request 
-	↓ 
+```text
+member 提交 hash
+	↓
+HashConsensus 达成 quorum
+	↓
+BaseOracle 记录 consensus report
+	↓
+submitReportData 提交完整数据
+	↓
+_processExitRequestsList emit exit request
+	↓
 triggerExits 执行 exit
 ```
 
-
----
+<br>
+<br>
+    
 ## 2. Bus 两阶段路径
 
 除了标准 Oracle 共识路径外，`ValidatorsExitBus` 还支持一种更轻量的两阶段提交方式：
@@ -237,6 +251,7 @@ triggerExits 执行 exit
 submitExitRequestsHash -> submitExitRequestsData
 ```
 
+<br>
 
 ### 2.1 提交 hash（commit 阶段）
 
@@ -251,15 +266,16 @@ requestStatusMap[exitRequestsHash] = {
 }
 ```
 
+<br>
 
 ### 2.2 提交完整数据（reveal 阶段）
 
 然后调用 `submitExitRequestsData(bytes data)` 接口，具体执行流程如下：
 
 ```
-1. 计算 keccak256(data) -> hash 
-2. 检查该 hash 是否已通过 submitExitRequestsHash 提交 
-3. 校验数据格式 / 长度 
+1. 计算 keccak256(data) -> hash
+2. 检查该 hash 是否已通过 submitExitRequestsHash 提交
+3. 校验数据格式 / 长度
 4. 调用 _processExitRequestsList(data)
 ```
 
@@ -267,40 +283,41 @@ requestStatusMap[exitRequestsHash] = {
 
 Bus 两阶段路径总结
 
-```Plain text
-submitExitRequestsHash(hash) 
-	↓ 
-submitExitRequestsData(data) 
-	↓ 
-_processExitRequestsList 
-	↓ 
-emit ValidatorExitRequest 
-	↓ 
-triggerExits 
-	↓ 
+```text
+submitExitRequestsHash(hash)
+	↓
+submitExitRequestsData(data)
+	↓
+_processExitRequestsList
+	↓
+emit ValidatorExitRequest
+	↓
+triggerExits
+	↓
 Beacon Chain exit
 ```
 
-
----
+<br>
+<br>
+    
 ## Summary
 
-```Plain text
-1. Oracle 路径（主路径） 
-   HashConsensus 达成 quorum 
-   -> BaseOracle 记录 
-   -> submitReportData 
-   -> processing 
-   -> emit exit request 
-   -> triggerExits 
-   
-2. Bus 路径（辅助路径） 
-   submitExitRequestsHash 
-   -> submitExitRequestsData 
-   -> emit exit request 
-   -> triggerExits 
-   
-3. 最终统一执行 ValidatorExitRequest 
-   -> TriggerableWithdrawalsGateway 
+```text
+1. Oracle 路径（主路径）
+   HashConsensus 达成 quorum
+   -> BaseOracle 记录
+   -> submitReportData
+   -> processing
+   -> emit exit request
+   -> triggerExits
+
+2. Bus 路径（辅助路径）
+   submitExitRequestsHash
+   -> submitExitRequestsData
+   -> emit exit request
+   -> triggerExits
+
+3. 最终统一执行 ValidatorExitRequest
+   -> TriggerableWithdrawalsGateway
    -> Beacon Chain exit
 ```
