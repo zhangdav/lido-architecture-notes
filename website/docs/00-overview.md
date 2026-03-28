@@ -4,6 +4,8 @@ slug: /
 
 ## Overview
 
+Follow the project on GitHub: [zhangdav/lido-architecture-notes](https://github.com/zhangdav/lido-architecture-notes)
+
 `Lido` is an Ethereum staking protocol that combines "instant liquidity certificates" and "asynchronous underlying pledge settlement". After the user submits ETH, the protocol will immediately mint `stETH` as the equity certificate, allowing the user to maintain on-chain liquidity while the funds have entered the pledge system; and the underlying validator creation, operation, reward accumulation, exit triggering and withdrawal return are completed through the Router, StakingModule, Oracle, Vault and WithdrawalQueue modules. The entire system is not completed synchronously by a single user operation, but relies on Oracle to periodically synchronize the status of Consensus Layer and Execution Layer back to the chain, and then uniformly complete rebase, reward distribution, exit result confirmation and withdrawal settlement.
 
 > *Refer to the official repo version: https://github.com/lidofinance/core/tree/v2.2.0*

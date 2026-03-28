@@ -4,6 +4,8 @@ slug: /
 
 ## 概述
 
+GitHub 导航：[zhangdav/lido-architecture-notes](https://github.com/zhangdav/lido-architecture-notes)
+
 `Lido` 是一个将“即时流动性凭证”和“异步底层质押结算”结合起来的以太坊质押协议。用户提交 ETH 后，协议会立即铸造 `stETH` 作为权益凭证，使用户在资金已进入质押体系的同时仍保持链上流动性；而底层的 validator 创建、运行、奖励累积、退出触发以及提款回流，则分别通过 Router、StakingModule、Oracle、Vault 和 WithdrawalQueue 等模块协同完成。整个系统并不是由单次用户操作同步完成，而是依赖 Oracle 周期性地把 Consensus Layer 和 Execution Layer 的状态同步回链上，再统一完成 rebase、奖励分配、退出结果确认和提款结算。
 
 > *参考官方 repo version：https://github.com/lidofinance/core/tree/v2.2.0*
