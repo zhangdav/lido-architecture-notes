@@ -63,6 +63,11 @@ const config: Config = {
           label: 'Docs',
         },
         {
+          href: 'https://github.com/zhangdav/lido-architecture-notes',
+          label: 'GitHub',
+          position: 'right',
+        },
+        {
           type: 'localeDropdown',
           position: 'right',
         },
