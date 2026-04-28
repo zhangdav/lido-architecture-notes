@@ -1,8 +1,10 @@
 ---
 slug: /
+title: "00 Overview"
+sidebar_label: "00 Overview"
 ---
 
-## 00 Overview
+## Overview
 
 Follow the project on GitHub: [zhangdav/lido-architecture-notes](https://github.com/zhangdav/lido-architecture-notes)
 

@@ -1,3 +1,8 @@
+---
+title: "02 模块生命周期"
+sidebar_label: "02 模块生命周期"
+---
+
 ## 概述
 
 `StakingRouter` 是 Lido 协议中负责管理 StakingModule 生命周期与状态的核心合约。它在 `Lido` 合约与各个 `StakingModule` 之间，承担模块注册、配置管理、运行状态控制以及 validator 退出状态同步等职责。

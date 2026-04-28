@@ -1,4 +1,9 @@
-## 03 Oracle System
+---
+title: "03 Oracle System"
+sidebar_label: "03 Oracle System"
+---
+
+## Overview
 
 Lido's Oracle system is essentially a **layered, decoupled state-synchronization and execution system** composed of three core component layers:
 

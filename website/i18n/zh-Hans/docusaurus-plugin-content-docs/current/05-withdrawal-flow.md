@@ -1,3 +1,8 @@
+---
+title: "05 提款流程"
+sidebar_label: "05 提款流程"
+---
+
 ## 概述
 
 Lido 的 withdrawal 流程并不是“用户发起 unstake 后立刻拿回 ETH”，而是先进入 `WithdrawalQueue` 排队，随后由 `AccountingOracle` 在 oracle report 中对一批请求做 finalization，最后用户再调用 `claimWithdrawal()` 领取已经锁定好的 ETH。WithdrawalQueue 也是一个 `unstETH` ERC-721 NFT 合约，NFT 代表用户在队列中的提款权利，请求创建时 mint，claim 时 burn。

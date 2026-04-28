@@ -1,4 +1,9 @@
-## 01 Deposit Flow
+---
+title: "01 Deposit Flow"
+sidebar_label: "01 Deposit Flow"
+---
+
+## Overview
 
 Lido's ETH staking flow starts when the user submits ETH and ends when Oracle reporting synchronizes Beacon Chain state and triggers `stETH` rebase.
 

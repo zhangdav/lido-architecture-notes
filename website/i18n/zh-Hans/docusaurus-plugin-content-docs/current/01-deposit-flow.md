@@ -1,3 +1,8 @@
+---
+title: "01 存款流程"
+sidebar_label: "01 存款流程"
+---
+
 ## 概述
 
 Lido 的 ETH staking 流程从用户提交 ETH 开始，最终通过 Oracle 报告同步 Beacon Chain 状态并触发 `stETH` rebase。

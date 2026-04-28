@@ -1,4 +1,9 @@
-## 05 Withdrawal Flow
+---
+title: "05 Withdrawal Flow"
+sidebar_label: "05 Withdrawal Flow"
+---
+
+## Overview
 
 Lido's withdrawal process is not "the user gets ETH back immediately after unstaking." Instead, the request first enters the `WithdrawalQueue`. `AccountingOracle` later finalizes batches of requests in the oracle report. Finally, the user calls `claimWithdrawal()` to receive the locked ETH. `WithdrawalQueue` is also an `unstETH` ERC-721 NFT contract: the NFT represents the user's withdrawal right in the queue, is minted when the request is created, and is burned when the request is claimed.
 

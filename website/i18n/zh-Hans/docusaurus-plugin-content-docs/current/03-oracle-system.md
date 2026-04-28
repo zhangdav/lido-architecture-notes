@@ -1,3 +1,8 @@
+---
+title: "03 Oracle 系统"
+sidebar_label: "03 Oracle 系统"
+---
+
 ## 概述
 
 Lido 的 Oracle 体系本质上是一个 **分层 + 解耦的状态同步与执行系统**，由三类核心组件组成：

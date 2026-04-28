@@ -1,4 +1,9 @@
-## 07 Exit Bus Oracle
+---
+title: "07 Exit Bus Oracle"
+sidebar_label: "07 Exit Bus Oracle"
+---
+
+## Overview
 
 The `AccountingOracle` contracts are mainly responsible for synchronizing validator exit data at the module and node-operator levels. The `ValidatorsExitBusOracle` contracts are what actually trigger the CL layer to decide which validators should exit now. So `AccountingOracle` is primarily a state-synchronization machine, while `ValidatorsExitBusOracle` is the trigger that controls and executes validator exits on the CL side. The former is the effect, and the latter is the cause.
 

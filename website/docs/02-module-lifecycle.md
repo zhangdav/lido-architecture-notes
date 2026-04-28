@@ -1,4 +1,9 @@
-## 02 Module Lifecycle
+---
+title: "02 Module Lifecycle"
+sidebar_label: "02 Module Lifecycle"
+---
+
+## Overview
 
 `StakingRouter` is the core Lido contract responsible for managing the lifecycle and status of `StakingModule`. It sits between the `Lido` contract and each `StakingModule` and handles module registration, configuration management, runtime status control, and validator exit status synchronization.
 

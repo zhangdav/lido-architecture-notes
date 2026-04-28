@@ -1,3 +1,8 @@
+---
+title: "06 费用模型"
+sidebar_label: "06 费用模型"
+---
+
 ## 概述
 
 Lido 对质押收益收取协议费，不是从用户存入的本金直接收费。而是对 staking rewards 收取的协议费，这部分费用在 node operators 和 staking modules，以及 DAO treasury 之间分配。该费率可由 Lido DAO 通过治理修改。

@@ -1,3 +1,8 @@
+---
+title: "07 退出总线 Oracle"
+sidebar_label: "07 退出总线 Oracle"
+---
+
 ## 概述
 
 `AccountingOracle` 系列合约的机制主要是负责同步 `Module` 和 `node operator` 级退出的 `validator`数据。而 `ValidatorsExitBusOracle` 系列合约则是真正触发 CL 层“哪些 validator 现在应该退出”。所以 `AccountingOracle` 主要负责状态同步，它是一个状态机。`ValidatorsExitBusOracle` 则是真正去 CL 层控制和执行 `validator` 退出的触发器，前者是果，后者是因。

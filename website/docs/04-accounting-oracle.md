@@ -1,4 +1,9 @@
-## 04 Accounting Oracle
+---
+title: "04 Accounting Oracle"
+sidebar_label: "04 Accounting Oracle"
+---
+
+## Overview
 
 The Lido Oracle system is a state machine built around three core modules: `HashConsensus`, `BaseOracle`, and `AccountingOracle`. Committee members submit report hashes to `HashConsensus`, reach consensus, and then submit the full report within the allowed time window. `BaseOracle` records and manages the current consensus report, and `AccountingOracle` processes the report and provides state-update data for the Lido contract.
 

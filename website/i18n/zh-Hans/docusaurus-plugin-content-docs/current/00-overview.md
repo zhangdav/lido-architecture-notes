@@ -1,5 +1,7 @@
 ---
 slug: /
+title: "00 概述"
+sidebar_label: "00 概述"
 ---
 
 ## 概述

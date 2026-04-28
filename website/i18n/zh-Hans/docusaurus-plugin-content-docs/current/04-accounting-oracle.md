@@ -1,3 +1,8 @@
+---
+title: "04 记账 Oracle"
+sidebar_label: "04 记账 Oracle"
+---
+
 ## 概述
 
 Lido 协议 oracle 是一个复杂的状态机，主要由三个核心模块组成：`HashConsensus`、`BaseOracle`、`AccountingOracle` 组成。oracle committee 成员将报告上传到 `HashConsensus`，对达成共识，且在规定时间范围内提交报告，`BaseOracle` 负责记录和管理当前已达成共识的报告， `AccountingOracle`负责处理报告，为 Lido 合约提供状态更新的数据参数。
@@ -934,4 +939,3 @@ submitReportExtraDataList(batch2)
    moduleId + nodeOperatorIds + validatorsCounts
    最终调用 StakingRouter.reportStakingModuleExitedValidatorsCountByNodeOperator(...)
 ```
-

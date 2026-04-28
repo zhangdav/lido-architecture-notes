@@ -1,4 +1,9 @@
-## 06 Fee Model
+---
+title: "06 Fee Model"
+sidebar_label: "06 Fee Model"
+---
+
+## Overview
 
 Lido charges a protocol fee on staking rewards, not directly on the principal deposited by users. The fee is split between node operators, staking modules, and the DAO treasury. The rate can be changed through Lido DAO governance.
 
