@@ -1,11 +1,11 @@
-## Overview
+## 05 Withdrawal Flow
 
-Lido's withdrawal process is not "the user immediately gets back the ETH after initiating the unstake". Instead, it first enters the `WithdrawalQueue` queue, and then `AccountingOracle` finalizes a batch of requests in the oracle report. Finally, the user calls `claimWithdrawal()` to receive the locked ETH. WithdrawalQueue is also a `unstETH` ERC-721 NFT contract. NFT represents the user's withdrawal rights in the queue. It mints when requesting creation and burns when claiming.
+Lido's withdrawal process is not "the user gets ETH back immediately after unstaking." Instead, the request first enters the `WithdrawalQueue`. `AccountingOracle` later finalizes batches of requests in the oracle report. Finally, the user calls `claimWithdrawal()` to receive the locked ETH. `WithdrawalQueue` is also an `unstETH` ERC-721 NFT contract: the NFT represents the user's withdrawal right in the queue, is minted when the request is created, and is burned when the request is claimed.
 
 <br />
 <br />
     
-## 1. User entrance
+## 1. User Entry
 
 The process for users to apply for withdrawal is as follows:
 
@@ -19,7 +19,7 @@ user requestWithdrawals(...)
 -> unstETH NFT corresponding to mint
 ```
 
-The generated `requestId` is used as the anchor point for the entire subsequent extraction link, and will serve as a link between the previous and the following:
+The generated `requestId` is the anchor for the rest of the withdrawal flow:
 
 - `calculateFinalizationBatches` scans the queue in the order of `requestId`
 - `finalize` is advancement `lastFinalizedRequestId`
@@ -27,9 +27,9 @@ The generated `requestId` is used as the anchor point for the entire subsequent 
 
 <br />
 
-### 1.1 `unstETH` NFT: Withdrawal rights certificate
+### 1.1 `unstETH` NFT: Withdrawal Right Certificate
 
-After the user calls `requestWithdrawals*()`, WithdrawalQueue will also mint a `unstETH` ERC-721 NFT corresponding to `requestId`. The meaning of this NFT is not "already extractable ETH", but rather:
+After the user calls `requestWithdrawals*()`, `WithdrawalQueue` also mints a `unstETH` ERC-721 NFT corresponding to `requestId`. This NFT does not mean "ETH is already withdrawable"; instead, it:
 
 - Represents the ownership of the withdrawal request in the queue
 - Represents the right to execute `claimWithdrawal` on this request in the future
@@ -39,7 +39,7 @@ In other words, whoever holds this NFT will have the withdrawal rights correspon
 
 <br />
 
-### 1.2 NFT is transferable
+### 1.2 The NFT Is Transferable
 
 `WithdrawalQueueERC721` implements the core interface of standard ERC-721, including:
 
@@ -53,20 +53,20 @@ Therefore, after the request is created and before the claim is made, this `unst
 
 - Users can hold the claim until finalization.
 - You can also transfer the NFT to others
-- The claim rights will be transferred together with the NFT ownership
+- Claim rights move together with NFT ownership
 
 When the NFT is transferred, the `owner` of the request will also be updated synchronously within the contract, so the person who can actually claim it later is the current NFT owner.
 
 <br />
 
-### 1.3 When will NFT disappear?
+### 1.3 When Does the NFT Disappear?
 
 When the request is successfully claimed:
 
 - request will be marked as `claimed`
 - The corresponding `unstETH` NFT will be burned
 
-Therefore, `unstETH` NFT only exists during the life cycle of request:
+Therefore, the `unstETH` NFT only exists during the request lifecycle:
 
 ```text
 request create
@@ -78,7 +78,7 @@ request create
 <br />
 <br />
     
-## 2. The user starts waiting for finalization
+## 2. Waiting for Finalization
 
 The request enters the FIFO queue and the user cannot claim immediately. Only after finalization occurs can the user claim. At the same time, users will no longer enjoy the subsequent benefits of this part of `stETH` during the queue period.
 
@@ -93,7 +93,7 @@ User initiates request
 <br />
 <br />
     
-## 3. `calculateFinalizationBatches`: Batch planning
+## 3. `calculateFinalizationBatches`: Batch Planning
 
 Then the Oracle daemon calls the `calculateFinalizationBatches` interface to calculate which requests can be finalized in this round under the constraints of budget, time, and share rate, and divide them into batches.
 
@@ -130,9 +130,9 @@ For example `batches = [5, 9, 12]` means:
 <br />
 <br />
 
-## 4.Oracle report
+## 4. Oracle Report
 
-Oracle's overall process under the extraction link is as follows:
+The overall withdrawal flow is as follows:
 
 ```Solidity
 Oracle daemon calls calculateFinalizationBatches(...)
@@ -157,7 +157,7 @@ Oracle will first synchronize the `WithdrawalQueue` state and call the `onOracle
 <br />
 <br />
 
-## 5. `prefinalize` Precalculate withdrawal cost
+## 5. `prefinalize`: Precalculate Withdrawal Cost
 
 During the accounting phase of oracle report, `WithdrawalQueue.prefinalize()` will be called. `prefinalize` is a pre-calculation of the batches selected in the previous step `calculateFinalizationBatches`, including:
 
@@ -179,27 +179,27 @@ Receive the priority fee / MEV income of the execution layer, and then call `wit
 
 WithdrawalVault
 
-Receive ETH from the consensus layer withdrawal credentials, and then be pulled back to the buffer by `Lido` during the oracle report, updating the `BufferedEther` ledger in the Lido contract. The consensus layer withdraws the pledged ETH principal instead of rewards. The withdrawal process is as follows:
+Receives ETH from the consensus-layer withdrawal credentials and is later pulled back to the buffer by `Lido` during the oracle report, updating the `BufferedEther` ledger in the Lido contract. The consensus layer withdraws the staked ETH principal, not rewards. The withdrawal process is as follows:
 
 > ***Triggerable Withdrawals / EIP-7002 Path***
 >
-> `gate` Contract payment withdrawal fee
+> `gate` contract pays the withdrawal fee
 > 	↓
 > `WithdrawalVault.addWithdrawalRequests()`
 > 	↓
-> Withdraw the fee and transfer it to the consensus layer `predeploy` contract. Add the withdrawal request to the queue.
+> Pay the fee, transfer it to the consensus-layer `predeploy` contract, and add the withdrawal request to the queue.
 > 	↓
-> The consensus layer (`Beacon chain`) executes the extraction of pledged ETH according to the queue
+> The consensus layer (`Beacon chain`) executes the withdrawal of staked ETH according to the queue
 > 				 |
 ***WithdrawalVault fund receiving path***
 > 				↓
-> ETH is transferred to the `withdrawal_credentials` specified address
+> ETH is transferred to the address specified by `withdrawal_credentials`
 > 	↓
-> `Lido` Contract call `WithdrawalVault.withdrawWithdrawals()`
+> `Lido` contract calls `WithdrawalVault.withdrawWithdrawals()`
 > 	↓
-> ETH to Lido Contract
+> ETH is transferred to the Lido contract
 
-The `finalize` interface will then determine the final value for the request, lock the ETH in the contract balance, and burn the underlying `stETH`.
+The `finalize` interface then determines the final value for the request, locks the ETH in the contract balance, and burns the underlying `stETH`.
 
 ```Solidity
 WithdrawalQueue.finalize(...)

@@ -1,6 +1,6 @@
-## Overview
+## 06 Fee Model
 
-Lido charges a protocol fee for staking income, not directly from the principal deposited by users. It is a protocol fee charged for staking rewards, which is distributed between node operators and staking modules, as well as the DAO treasury. This rate can be modified by the Lido DAO through governance.
+Lido charges a protocol fee on staking rewards, not directly on the principal deposited by users. The fee is split between node operators, staking modules, and the DAO treasury. The rate can be changed through Lido DAO governance.
 
 > [!NOTE]
 > The protocol fee is usually represented as a portion of the fee for staking rewards; on the Router side, the final total rate depends on the sum of the `module fee`, `treasury fee` and their `active validators` weights of each module. The current common governance configuration is 10%, but from a mechanism perspective, the Router aggregation result is not a hard-coded constant in the code.
@@ -9,35 +9,35 @@ This means that what users receive is the net staking income after deducting the
 
 <br />
 
-- module fee module fee
+- module fee
 
-The fees allocated to the staking module are used to compensate the module and its node operators for providing verifier operation, infrastructure maintenance, operation and maintenance management and other services.
+The fees allocated to the staking module compensate the module and its node operators for validator operations, infrastructure maintenance, and day-to-day operations.
 
-- treasury fee treasury fee
+- treasury fee
 
-Fees allocated to the Lido DAO Treasury are used for protocol-level governance, development, risk control, emergencies and other DAO expenses.
+Fees allocated to the Lido DAO Treasury are used for protocol governance, development, risk management, incident response, and other DAO expenses.
 
-Therefore, the fee composition of a single module is: the total rate of the module = module fee + treasury fee.
+So the fee structure of a single module is: total module rate = module fee + treasury fee.
 
 <br />
 
-## Calculation formula
+## Calculation Formula
 
-Calculated according to the proportion of active validators of the module × the fee rate set by the module
+Calculated as the module's active-validator share multiplied by the fee rate set for that module
 
 1. The module’s validator weight in the protocol
 
 Proportion of module validators = module active validators / full protocol active validators
 
-2. The module fee actually received by the module
+2. Module fee actually received
 
-The final reward share obtained by the module = Proportion of module verifiers × module fee
+Module reward share = module validator share × module fee
 
 3. Module share allocated to Treasury
 
 The Treasury share corresponding to this module = Proportion of module validators × treasury fee
 
-4. Summarize total agreement fee
+4. Aggregate total protocol fee
 
 totalFee = sum of all modules (module fee share + treasury fee share)
 
@@ -62,7 +62,7 @@ totalFee +=
 
 <br />
 
-> Give an example 🌰
+> Example 🌰
 >
 > Assume that there are 1000 active validators in the entire protocol, among which:
 >
@@ -102,12 +102,12 @@ totalFee +=
 > Module revenue = 20% × 10% = **2%**
 > Treasury income = 20% × 2% = **0.4%**
 
-The final total agreement fee is: 4% + 1% + 1.8% + 0.9% + 2% + 0.4% = 10.1%
+The final total protocol fee is: 4% + 1% + 1.8% + 0.9% + 2% + 0.4% = 10.1%
 
 <br />
 <br />
 
-## `activeValidators` and `exitedValidators` synchronization mechanism
+## `activeValidators` and `exitedValidators` Synchronization
 
 As mentioned in the previous example, when the Router calculates the fee allocation, the weight of the module depends on its `activeValidators` amount.
 
@@ -188,9 +188,9 @@ The final module weight depends on active validators, and the calculation of thi
 > `A = 800 / 1800`
 > `B = 1000 / 1800`
 >
-> Therefore, in the next round of rewards fee distribution: the handling fee weight of Module A will decrease, and the handling fee weight of Module B will increase relatively.
+> Therefore, in the next round of rewards-fee distribution, the fee weight of Module A will decrease, and the fee weight of Module B will increase relatively.
 
-In summary, the synchronization mechanism of `exitedValidators` will ultimately affect: the distribution ratio of rewards fees between modules and the treasury income source structure by changing the amount of `activeValidators`.
+In summary, synchronizing `exitedValidators` changes the amount of `activeValidators`, which in turn affects the reward-fee split across modules and the treasury's income composition.
 
 <br />
 <br />

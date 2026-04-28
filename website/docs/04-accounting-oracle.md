@@ -1,6 +1,6 @@
-## Overview
+## 04 Accounting Oracle
 
-The Lido protocol oracle is a complex state machine, mainly composed of three core modules: `HashConsensus`, `BaseOracle`, and `AccountingOracle`. The oracle committee members upload the report to `HashConsensus`, reach a consensus, and submit the report within the specified time range. `BaseOracle` is responsible for recording and managing the current consensus report, and `AccountingOracle` is responsible for processing the report and providing status update data parameters for the Lido contract.
+The Lido Oracle system is a state machine built around three core modules: `HashConsensus`, `BaseOracle`, and `AccountingOracle`. Committee members submit report hashes to `HashConsensus`, reach consensus, and then submit the full report within the allowed time window. `BaseOracle` records and manages the current consensus report, and `AccountingOracle` processes the report and provides state-update data for the Lido contract.
 
 <br />
 
@@ -8,19 +8,19 @@ The Lido protocol oracle is a complex state machine, mainly composed of three co
 ---
 
 > oracle committee member<br />
-> quorum (the minimum number of members supporting the same hash is considered a consensus)<br />
-> Time segmentation of frame<br />
-> Each frame corresponds to `refSlot` and `deadline`<br />
-> Report hash submitted by members on a certain frame<br />
+> quorum (the minimum number of members that must support the same hash for consensus)<br />
+> frame time segmentation<br />
+> each frame corresponds to `refSlot` and `deadline`<br />
+> report hash submitted by members for a given frame<br />
 
-Therefore, the `HashConsensus` contract does not process the business data itself, nor does it rebase. It only does one thing: select a consensus report hash for each frame.
+Therefore, the `HashConsensus` contract does not process business data itself, and it does not rebase. It only does one thing: select a consensus report hash for each frame.
 
 <br />
 
-*BaseOracle: receive consensus report and manage processing status*
+*BaseOracle: Receive consensus reports and manage processing status*
 ---
 
-The `BaseOracle` contract is an "asynchronous processing base class". It is responsible for:
+The `BaseOracle` contract is an "asynchronous processing base class." It is responsible for:
 
 > Receive `(hash, refSlot, deadline)` pushed by HashConsensus<br />
 > Record the reports that are currently agreed upon but not yet processed<br />
@@ -31,7 +31,7 @@ So it's the buffering layer and processing state machine for consensus results. 
 
 <br />
 
-*AccountingOracle: Submit complete data and perform business*
+*AccountingOracle: Submit complete data and execute business logic*
 ---
 `AccountingOracle` adds real business semantics on top of `BaseOracle`. It is responsible for:
 
@@ -43,7 +43,7 @@ So it's the buffering layer and processing state machine for consensus results. 
 > Initialize extraData state<br />
 > Batch processing extraData item<br />
 
-So `HashConsensus` solves which hash is recognized, `BaseOracle` solves when to start processing, and `AccountingOracle` solves "how to process complete business data".
+So `HashConsensus` decides which hash is recognized, `BaseOracle` decides when processing starts, and `AccountingOracle` decides how to process the full business payload.
 
 <br />
 

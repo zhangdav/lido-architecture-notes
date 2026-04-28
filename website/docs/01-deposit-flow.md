@@ -1,28 +1,28 @@
-## Overview
+## 01 Deposit Flow
 
-Lido's ETH staking process starts with the user submitting ETH, and finally synchronizes the Beacon Chain status through Oracle reporting and triggers `stETH` rebase.
+Lido's ETH staking flow starts when the user submits ETH and ends when Oracle reporting synchronizes Beacon Chain state and triggers `stETH` rebase.
 
 Throughout the process, the protocol involves several core components:
 
-- Lido: User entrance, responsible for receiving ETH and mint `stETH`
-- DepositSecurityModule (DSM): Responsible for deposit security verification
-- StakingRouter: Responsible for selecting staking module and executing validator deposit
-- StakingModule: manages node operator and validator keys
+- Lido: User entry point; receives ETH and mints `stETH`
+- DepositSecurityModule (DSM): Performs deposit safety checks
+- StakingRouter: Selects a staking module and executes validator deposits
+- StakingModule: Manages node operators and validator keys
 - Beacon DepositContract: Ethereum’s official deposit contract
 - AccountingOracle: synchronize Consensus Layer status and update protocol accounting
 
 <br />
    
-## 1. User entrance
+## 1. User Entry
 
-The user interacts with the `Lido` contract `submit()` instead of directly interacting with `StakingRouter`; `Lido` is responsible for receiving ETH and mint `stETH` to the user; and temporarily puts the ETH into the buffer, and the ETH in the buffer will be allocated later.
+The user interacts with `Lido.submit()` rather than calling `StakingRouter` directly. `Lido` receives ETH, mints `stETH` for the user, and places the ETH into the buffer for later allocation.
 
 <br />
    
-## 2. Minting of stETH
+## 2. Minting `stETH`
 
-After the user submits ETH, he or she will immediately receive `stETH`.
-This step occurs in `Lido.submit()` and does not require ETH to complete the Beacon deposit on the spot.
+After the user submits ETH, `stETH` is minted immediately.
+This happens in `Lido.submit()` and does not require an immediate Beacon deposit.
 
 `stETH` share calculation formula:
 
@@ -39,34 +39,34 @@ User stake
 ```
 <br />
    
-## 3. Deposit allocation strategy (Router allocation)
+## 3. Deposit Allocation Strategy (Router allocation)
 
-When enough ETH has accumulated in the buffer, the protocol needs to decide:
+When enough ETH has accumulated in the buffer, the protocol must decide:
 
 - How many validator deposits can be executed in this round?
 - Which `StakingModule` should the deposit be allocated to?
 
-By calling `getDepositsAllocation()` in the `StakingRouter` contract, calculate:
+By calling `StakingRouter.getDepositsAllocation()`, the protocol calculates:
 
 - Each module currently has `activeValidatorsCount`
 - Each module can provide `availableValidatorsCount`
 - module's `stakeShareLimit`
 - module's current `status`
 
-Router will load the status of all modules and call `MinFirstAllocationStrategy.allocate()` to calculate the distribution ratio of deposits among modules in this round.
+The Router loads the status of all modules and calls `MinFirstAllocationStrategy.allocate()` to calculate the deposit split for this round.
 
 > [!NOTE]
-> This function is only responsible for **calculating allocation** and will not actually perform deposits.
+> This function only **calculates allocation**; it does not execute deposits.
 
 <br />
    
-## 4. DSM initiates deposit
+## 4. DSM Initiates Deposit
 
-The guardian calls `depositBufferedEther()` to specify the target `StakingModuleId`, along with the relevant parameters and signature of this deposit. `DepositSecurityModule` will first verify the signature, module status, nonce, block conditions, etc., and then call `Lido.deposit()`.
+The guardian calls `depositBufferedEther()` to specify the target `StakingModuleId` together with the parameters and signature for the deposit. `DepositSecurityModule` first verifies the signature, module status, nonce, block conditions, and related constraints, then calls `Lido.deposit()`.
 
 <br />
    
-## 5.Lido deposit
+## 5. Lido Deposit
 
 `deposit()` in the Lido contract will verify whether `msg.sender` is DSM, and then calculate the `depositsCount` actually executed this time. Then `depositsCount * 32 ETH` is deducted from buffer and `StakingRouter.deposit()` is called.
 
@@ -82,17 +82,17 @@ The guardian calls `depositBufferedEther()` to specify the target `StakingModule
 
 ## 6. StakingRouter deposit
 
-`StakingRouter` will check whether `msg.sender` is a Lido contract and check:
+`StakingRouter` verifies that `msg.sender` is the Lido contract and checks:
 
 - `withdrawal_credentials`
 - Is target `StakingModule` in `Active`
 - `msg.value == depositsCount * 32 ETH`
 
-Then call `obtainDepositData()` on the target module to retrieve the public key and signature of the corresponding validator.
+It then calls `obtainDepositData()` on the target module to retrieve the validator public key and signature.
 
 <br />
 
-## 7. Beacon deposit
+## 7. Beacon Deposit
 
 `StakingRouter` through `BeaconChainDepositor._makeBeaconChainDeposits32ETH()` will:
 
@@ -101,13 +101,13 @@ Then call `obtainDepositData()` on the target module to retrieve the public key 
 - `validator pubkeys`
 - `signatures`
 
-Submit it to Beacon DepositContract together to complete the underlying pledge.
+Submit them to the Beacon DepositContract to complete the underlying stake.
 
 <br />
    
-## 8. Oracle Synchronization Protocol Status
+## 8. Oracle Synchronizes Protocol State
 
-When the validator starts running, its balance and status changes occur in the Consensus Layer (Beacon Chain). These statuses are not automatically synchronized to the Lido contract and need to be updated through Oracle reports. Lido periodically submits reports through `AccountingOracle` to update the key status of the protocol.
+When validators start running, their balance and status changes occur on the Consensus Layer (Beacon Chain). These changes are not automatically reflected in the Lido contract and must be updated through Oracle reports. Lido periodically submits reports through `AccountingOracle` to update the protocol state.
 
 Oracle reports contain the following information:
 
@@ -121,7 +121,7 @@ The current number of validators and the number of exited validators.
 The ETH that can be withdrawn from the execution layer withdrawal vault.
 
 - **Execution layer rewards**
-Executive layer rewards from MEV and priority fees.
+Execution layer rewards from MEV and priority fees.
 
 - **Withdrawal finalization**
 Oracle will finalize withdrawal requests based on the report data and calculate the stETH shares that need to be destroyed.
@@ -145,9 +145,9 @@ This triggers the rebase of **stETH**, and the amount of stETH held by the user 
 
 <br />
    
-## 9. Calculation and distribution of Rewards
+## 9. Rewards Calculation and Distribution
 
-During Oracle reporting, the protocol calculates validator earnings. `StakingRouter` The contract is responsible for calculating the reward distribution ratio of each staking module: `getStakingRewardsDistribution()`
+During Oracle reporting, the protocol calculates validator earnings. The `StakingRouter` contract is responsible for calculating the reward distribution ratio of each staking module via `getStakingRewardsDistribution()`.
 
 Calculation basis:
 
@@ -163,13 +163,13 @@ Router will return:
 
 <br />
    
-## 10. Protocol fee shares mint
+## 10. Protocol Fee Share Minting
 
 After Oracle calculates the protocol fee, `Lido` will mint stETH shares and allocate them to staking modules and treasury.
 
 <br />
    
-## 11. Router notification module rewards
+## 11. Router Notifies Module Rewards
 
 After rewards mint completes, Oracle calls:
 
@@ -179,7 +179,7 @@ After rewards mint completes, Oracle calls:
 
 <br />
 
-## 12. stETH rebase
+## 12. `stETH` Rebase
 
 After Oracle accounting is completed, Lido updates `totalPooledEther` and `totalShares`, thereby triggering stETH rebase; the amount of `stETH` in the user's wallet will automatically increase.
 

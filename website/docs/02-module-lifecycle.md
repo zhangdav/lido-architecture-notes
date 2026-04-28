@@ -1,6 +1,6 @@
-## Overview
+## 02 Module Lifecycle
 
-`StakingRouter` is the core contract in the Lido protocol responsible for managing the life cycle and status of StakingModule. It is between the `Lido` contract and each `StakingModule`, and is responsible for module registration, configuration management, running status control, and validator exit status synchronization.
+`StakingRouter` is the core Lido contract responsible for managing the lifecycle and status of `StakingModule`. It sits between the `Lido` contract and each `StakingModule` and handles module registration, configuration management, runtime status control, and validator exit status synchronization.
 
 In Lido's architecture, validators are organized as follows:
 
@@ -39,7 +39,7 @@ The Router itself does not directly manage the validator's key or node running s
 
 In addition, the Router is also responsible for coordinating the validator status reported by Oracle, such as the synchronization of the number of exited validators, and triggering the module's status update callback when necessary.
 
-This document mainly describes the following contents:
+This document mainly covers:
 
 - Registration and initialization process of StakingModule
 - Module parameters and configuration updates
@@ -48,27 +48,27 @@ This document mainly describes the following contents:
 - Synchronization mechanism for Oracle to report exited validator status
 - Status recovery process under abnormal circumstances
 
-It should be noted that this document only focuses on the Module life cycle and state management logic. The ETH deposit process, validator distribution strategy, and reward distribution mechanism will be introduced separately in other documents.
+This document only focuses on module lifecycle and state management. The ETH deposit process, validator allocation strategy, and reward distribution mechanism are covered in other documents.
 
 <br />
 <br />
    
-## 1. Module registration
+## 1. Module Registration
 
-The Module manager first adds a module by calling `addStakingModule`.
+The module admin first adds a module by calling `addStakingModule`.
 
 <br />
 
-**Verification logic**
+**Validation**
 
 - Verify module address is not 0
-- Verification name cannot exceed the specified length
-- Verify whether the number of modules has exceeded the upper limit of 32**
+- Verify that the name does not exceed the allowed length
+- Verify that the module count has not exceeded the 32-module limit
 - Make sure the module address is not repeated
 
 <br />
 
-**Initialization process**
+**Initialization**
 
 - Assign `module id` auto-increment
 - Initialize `module state`
@@ -81,12 +81,12 @@ The Module manager first adds a module by calling `addStakingModule`.
 
 **Storage Structure**
 
-The storage method of Module is **Onbase dual index mapping mechanism**, which is used for efficient search and saving Gas.
+The module uses an **Onbase dual-index mapping mechanism** for efficient lookup and lower gas usage.
 
 <br />
 <br />
    
-## 2. Module configuration update
+## 2. Module Configuration Updates
 
 Module administrator can adjust module parameters during operation.
 
@@ -112,19 +112,19 @@ Module administrator can adjust module parameters during operation.
 <br />
 <br />
    
-## 3. Module runtime management
+## 3. Module Runtime Management
 
 Router will also adjust the module's running status during operation.
 
-### 3.1 Adjust vetted signing keys
+### 3.1 Adjust Vetted Signing Keys
 
 `decreaseStakingModuleVettedKeysCountByNodeOperator()`
 
-- Function: Reduce validator keys
+- Function: Reduce the number of validator keys
 
 <br />
 
-### 3.2 Pause or stop module
+### 3.2 Pause or Stop Module
 
 `setStakingModuleStatus()`
 
@@ -139,9 +139,9 @@ state:
 <br />
 <br />
 
-## 4. Validator exits
+## 4. Validator Exits
 
-The triggerable exit request of a certain validator is triggered, and the Router forwards this notification to the corresponding module.
+When a validator's triggerable exit request is activated, the Router forwards the notification to the corresponding module.
 
 ### 4.1 exit request is triggered
 
@@ -151,11 +151,11 @@ The triggerable exit request of a certain validator is triggered, and the Router
 
 <br />
 
-### 4.2 exit delay reporting
+### 4.2 Exit Delay Reporting
 
 `reportValidatorExitDelay()`
 
-- Function: Report how long a validator has been eligible to exit but has not actually exited after being requested to exit.
+- Function: Report how long a validator has been eligible to exit but has not yet exited after the exit request was triggered.
 
 > [!NOTE]
 >4.1 and 4.2 are `ExitBus / Triggerable exit` related running state events
@@ -164,11 +164,11 @@ The triggerable exit request of a certain validator is triggered, and the Router
 <br />
 <br />
    
-## 5. Oracle synchronization exit status
+## 5. Oracle Synchronizes Exit Status
 
 When the validator actually exits the Beacon chain, Oracle will synchronize the status.
 
-### 5.1 First synchronize the total number of Module layer exits
+### 5.1 Sync the Module-Level Exit Total First
 
 `updateExitedValidatorsCountByStakingModule()`
 
@@ -182,13 +182,13 @@ effect:
 
 <br />
 
-### 5.2 Resynchronize Node Operator layer exit details
+### 5.2 Sync Node Operator Exit Details
 
 `reportStakingModuleExitedValidatorsCountByNodeOperator`
 	↓
 `module.updateExitedValidatorsCount()`
 
-- Synchronous node operator exited validators
+- Sync node operator exited validators
 
 effect:
 
@@ -202,7 +202,7 @@ effect:
 <br />
 <br />
    
-## 6. Status synchronization completed
+## 6. Exit Status Synchronization Complete
 
 When Oracle completes node operator level exited validators data reporting, it will call:
 
@@ -225,11 +225,11 @@ If inconsistent, the module will not be marked as complete this cycle.
 <br />
 <br />
    
-## 7. Abnormal status repair
+## 7. Abnormal Status Repair
 
 If oracle reports an error, the administrator can fix it.
 
-**Repair entrance:`unsafeSetExitedValidatorsCount()`**
+**Repair entry: `unsafeSetExitedValidatorsCount()`**
 
 1. Check current status
 2. Modify module exitedValidatorsCount
@@ -242,7 +242,7 @@ If oracle reports an error, the administrator can fix it.
 ## Summary
 
 ```text
-Module life cycle
+Module lifecycle
 
 register
   addStakingModule

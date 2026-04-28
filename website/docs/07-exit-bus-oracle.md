@@ -1,14 +1,14 @@
-## Overview
+## 07 Exit Bus Oracle
 
-The mechanism of the `AccountingOracle` series contracts is mainly responsible for synchronizing the `validator` data exited at the `Module` and `node operator` levels. The `ValidatorsExitBusOracle` series of contracts actually triggers the CL layer "which validators should exit now". So `AccountingOracle` is mainly responsible for state synchronization, it is a state machine. `ValidatorsExitBusOracle` is the trigger that actually goes to the CL layer to control and execute `validator` exit. The former is the effect, and the latter is the cause.
-
-<br />
-
-You may have doubts as to why you need the `ValidatorsExitBusOracle` series of contracts, and what is its connection with the `WithdrawalQueue` series of contracts? In fact, the user will not directly trigger the validator exit of the CL layer through the `WithdrawalQueue` contract `withdrawal request`, it only records the extraction requirements. In order for the CL layer validator to actually exit, a separate exit command system is required. This is the role of `ValidatorsExitBusOracle`.
+The `AccountingOracle` contracts are mainly responsible for synchronizing validator exit data at the module and node-operator levels. The `ValidatorsExitBusOracle` contracts are what actually trigger the CL layer to decide which validators should exit now. So `AccountingOracle` is primarily a state-synchronization machine, while `ValidatorsExitBusOracle` is the trigger that controls and executes validator exits on the CL side. The former is the effect, and the latter is the cause.
 
 <br />
 
-There are two other differences between `ValidatorsExitBusOracle` and `AccountingOracle`. First, it is not the only `HashConsensus -> BaseOracle -> submitReportData` path; in addition, `ValidatorsExitBus` also provides an auxiliary two-stage path of `submitExitRequestsHash -> submitExitRequestsData`. Second, it does not handle the `ReportData` main report and the `extrData` data separately. In fact, `ValidatorsExitBusOracle` has two commit paths:
+You may wonder why the `ValidatorsExitBusOracle` contracts are needed and how they relate to the `WithdrawalQueue` contracts. A withdrawal request in `WithdrawalQueue` does not directly trigger validator exits on the CL layer; it only records the withdrawal demand. A separate exit-command system is required for validators to exit on the CL layer, and that is the role of `ValidatorsExitBusOracle`.
+
+<br />
+
+There are two other differences between `ValidatorsExitBusOracle` and `AccountingOracle`. First, it is not limited to the `HashConsensus -> BaseOracle -> submitReportData` path; it also provides an auxiliary two-stage path, `submitExitRequestsHash -> submitExitRequestsData`. Second, it does not split the main `ReportData` report and the `extrData` payload into separate flows. In fact, `ValidatorsExitBusOracle` has two submission paths:
 
 <br />
 
@@ -30,12 +30,12 @@ There are two other differences between `ValidatorsExitBusOracle` and `Accountin
 - Not dependent on `HashConsensus`
 - Used to flexibly submit exit requests
 
-Additionally, `ValidatorsExitBusOracle` processes the `ReportData` main report and `ExitRequestsData` data is processed within a single function call, to `emit event`.
+Additionally, `ValidatorsExitBusOracle` processes the `ReportData` main report and `ExitRequestsData` data within a single function call and emits events.
 
 <br />
 <br />
 
-## 1. Oracle consensus path
+## 1. Oracle Consensus Path
 
 `ValidatorsExitBusOracle` also supports the standard Oracle consensus process. Its overall structure is consistent with `AccountingOracle` and is still based on:
 
@@ -43,7 +43,7 @@ Additionally, `ValidatorsExitBusOracle` processes the `ReportData` main report a
 HashConsensus -> BaseOracle -> ValidatorsExitBusOracle
 ```
 
-But its `report` data is simpler and does not contain logic such as `rebase / vault / withdrawal`, only exit requests.
+Its `report` data is simpler and does not include `rebase`, `vault`, or `withdrawal` logic. It only carries exit requests.
 
 <br />
 

@@ -1,18 +1,18 @@
-## Overview
+## 03 Oracle System
 
-Lido's Oracle system is essentially a **layered + decoupled state synchronization and execution system**, consisting of three types of core components:
+Lido's Oracle system is essentially a **layered, decoupled state-synchronization and execution system** composed of three core component layers:
 
 ```
 HashConsensus -> BaseOracle -> Specific Oracle (Accounting/ExitBus)
 ```
 
-in:
+where:
 
 - `HashConsensus`: Responsible for reaching consensus on report hash
 - `BaseOracle`: Responsible for managing the processing state machine
 - Various Oracles: Responsible for specific business execution
 
-In Lido, Oracle is not a single module, but split into two core links:
+In Lido, Oracle is not a single module. It is split into two core flows:
 
 > 🔥 **AccountingOracle (status synchronization) + ValidatorsExitBusOracle (exit trigger)**
 
@@ -21,7 +21,7 @@ In Lido, Oracle is not a single module, but split into two core links:
 
 ## 1. Oracle layered architecture
 
-### 1.1 `HashConsensus`: Only do "select hash"
+### 1.1 `HashConsensus`: Only Select the Hash
 
 Responsibilities:
 
@@ -38,7 +38,7 @@ Only processes hash, not business data
 
 <br />
 
-### 1.2 BaseOracle: processing state machine
+### 1.2 BaseOracle: Processing State Machine
 
 Responsibilities:
 
@@ -57,7 +57,7 @@ Only manage "when to process" and don't care about "what to process"
 
 <br />
 
-### 1.3 Business Oracle: Execute real logic
+### 1.3 Business Oracle: Execute the Real Logic
 
 On top of BaseOracle, Lido implements two types of Oracle:
 
@@ -95,11 +95,11 @@ an "execution trigger"
 <br />
 <br />
 
-## 2. Two Oracle primary links
+## 2. Two Primary Oracle Flows
 
 There are two **completely independent links** in the actual operation of Lido Oracle:
 
-### 2.1 AccountingOracle (status synchronization chain)
+### 2.1 AccountingOracle (status-synchronization flow)
 
 ```text
 HashConsensus
@@ -126,7 +126,7 @@ Features:
 
 <br />
 
-### 2.2 ValidatorsExitBusOracle (exit trigger chain)
+### 2.2 ValidatorsExitBusOracle (exit-trigger flow)
 
 ```text
 HashConsensus / or Bus path
@@ -151,15 +151,15 @@ Features:
 <br />
 <br />
 
-## 3. The relationship between Withdrawal and Oracle
+## 3. Withdrawal and Oracle
 
-Many people easily misunderstand:
+This is often misunderstood:
 
 > ❗ **User withdrawal ≠ trigger validator exit**
 
 The correct relationship is as follows:
 
-### 3.1 The role of WithdrawalQueue
+### 3.1 The Role of WithdrawalQueue
 
 ```
 requestWithdrawals()
@@ -171,7 +171,7 @@ Just express needs without any execution
 
 <br />
 
-### 3.2 exit is triggered by ExitBusOracle
+### 3.2 Exit Is Triggered by ExitBusOracle
 
 ```
 ValidatorsExitBusOracle
@@ -182,7 +182,7 @@ Decoupled from user requests
 
 <br />
 
-### 3.3 ETH reflow synchronized by Oracle
+### 3.3 ETH Reflow Synchronized by Oracle
 
 ```
 CL withdrawal
@@ -196,7 +196,7 @@ Lido buffer update
 
 <br />
 
-### 3.4 finalize + claim
+### 3.4 Finalize + Claim
 
 ```
 AccountingOracle
@@ -227,7 +227,7 @@ user claim
 <br />
 <br />
 
-## 4. Decoupled design
+## 4. Decoupled Design
 
 The key to Lido Oracle's design is the complete decoupling of the three links.
 
@@ -255,7 +255,7 @@ Oracle (periodic operation)
 
 System execution
 	-> CL exit
--> ETH reflow vault
+-> ETH flows back to the vault
 
 Oracle
 	-> finalize withdrawal

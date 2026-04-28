@@ -2,22 +2,22 @@
 slug: /
 ---
 
-## Overview
+## 00 Overview
 
 Follow the project on GitHub: [zhangdav/lido-architecture-notes](https://github.com/zhangdav/lido-architecture-notes)
 
-`Lido` is an Ethereum staking protocol that combines "instant liquidity certificates" and "asynchronous underlying pledge settlement". After the user submits ETH, the protocol will immediately mint `stETH` as the equity certificate, allowing the user to maintain on-chain liquidity while the funds have entered the pledge system; and the underlying validator creation, operation, reward accumulation, exit triggering and withdrawal return are completed through the Router, StakingModule, Oracle, Vault and WithdrawalQueue modules. The entire system is not completed synchronously by a single user operation, but relies on Oracle to periodically synchronize the status of Consensus Layer and Execution Layer back to the chain, and then uniformly complete rebase, reward distribution, exit result confirmation and withdrawal settlement.
+`Lido` is an Ethereum staking protocol that combines "instant liquidity tokens" with "asynchronous staking settlement". After a user submits ETH, the protocol mints `stETH` immediately as the liquid staking token, so the user keeps on-chain liquidity while the funds enter the staking system. Validator creation, operation, reward accrual, exit triggering, and withdrawal settlement are handled by the Router, StakingModule, Oracle, Vault, and WithdrawalQueue modules. The system does not finish in a single user transaction; instead, Oracle periodically synchronizes Consensus Layer and Execution Layer state back on-chain and then completes rebase, reward distribution, exit confirmation, and withdrawal settlement.
 
 > *Refer to the official repo version: https://github.com/lidofinance/core/tree/v2.2.0*
 
 ![Lido Architecture](/img/diagrams/lido_architecture.png)
 
   
-## 1. Four core links
+## 1. Four core flows
 
 The Lido protocol can be broken down into four core links, which cooperate with each other but are not executed in the same transaction.
 
-### 1.1 Deposit (pledge link)
+### 1.1 Deposit (staking flow)
 
 ```
 user
@@ -28,7 +28,7 @@ user
 Follow-up:
 -> StakingRouter allocates deposit
 -> StakingModule provides validator keys
--> Beacon DepositContract completes the pledge
+-> Beacon DepositContract completes the stake
 ```
 
 Features:
@@ -38,7 +38,7 @@ Features:
 
 <br />
 
-### 1.2 Validator Lifecycle (validator life cycle)
+### 1.2 Validator Lifecycle
 
 ```
 StakingRouter
@@ -56,7 +56,7 @@ Features:
 
 <br />
 
-### 1.3 Oracle (state synchronization link)
+### 1.3 Oracle (state synchronization flow)
 
 ```
 HashConsensus
@@ -84,7 +84,7 @@ Features:
 
 <br />
 
-### 1.4 Withdrawal (withdrawal link)
+### 1.4 Withdrawal (withdrawal flow)
 
 ```
 user
@@ -107,7 +107,7 @@ Features:
 <br />
 <br />
   
-## 2. Division of core modules
+## 2. Core Module Responsibilities
 
 Lido splits different responsibilities into different contracts through modular design:
 
@@ -168,7 +168,7 @@ Lido splits different responsibilities into different contracts through modular 
 <br />
 <br />
   
-## 3. Key design ideas
+## 3. Key Design Ideas
 
 ### 3.1 Oracle driver (non-user driver)
 
@@ -234,10 +234,10 @@ In order to fully understand the Lido protocol, it is recommended to read in the
 ```
 1. This article: Overview of the Lido protocol (global map)
 
-2. Pledge process
+2. Staking flow
 -> Understand how ETH enters CL
 
-3. StakingRouter / Module life cycle
+3. StakingRouter / Module lifecycle
 -> Understand the validator management structure
 
 4. Overview of Oracle Mechanism
